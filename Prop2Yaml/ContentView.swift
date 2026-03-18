@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var propertiesText = AttributedString("")
+    @State private var propertiesTextStr: String = ""
     @State private var yamlText = AttributedString("")
     @State private var showLineNumbers: Bool = true
     @State private var fontSize: CGFloat = 13
@@ -18,7 +19,7 @@ struct ContentView: View {
             ToolbarView(
                 showLineNumbers: $showLineNumbers,
                 fontSize: $fontSize,
-                onClear: { propertiesText = ""; yamlText = "" },
+                onClear: { propertiesText = AttributedString(""); yamlText = AttributedString(); propertiesTextStr = "" },
                 onConvert: convert
             )
             
@@ -30,7 +31,10 @@ struct ContentView: View {
                     subtitle: "Paste your .properties file here",
                     icon: "doc.text",
                     accentColor: .blue,
-                    text: $propertiesText,
+                    text: Binding(
+                        get: { propertiesText },
+                        set: { propertiesTextStr = String($0.characters )}
+                    ),
                     isEditable: true,
                     showLineNumbers: showLineNumbers,
                     fontSize: fontSize,
@@ -65,7 +69,6 @@ struct ContentView: View {
     }
     
     private func convert() {
-        let propertiesTextStr = String(propertiesText.characters)
         propertiesText = SyntaxHighlighter
             .highlightProperties(propertiesTextStr)
         

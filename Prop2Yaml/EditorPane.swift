@@ -55,7 +55,7 @@ struct EditorPane: View {
                     .animation(.easeInOut(duration: 0.2), value: isCopied)
                 } else {
                     Button {
-                        text = ""
+                        text = AttributedString()
                     } label: {
                         Label("Clear", systemImage: "xmark.circle")
                             .font(.system(size: 11, weight: .medium))
