@@ -9,6 +9,8 @@ import Foundation
 
 enum PropertiesConverter {
     
+    // MARK: - Properties → YAML
+    
     static func convert(_ input: String) -> AttributedString {
         var root = YAMLNode.mapping([])
         var pendingComments: [String] = []
@@ -62,4 +64,80 @@ enum PropertiesConverter {
             .joined(separator: "\n"))
     }
     
+    // MARK: - YAML → Properties
+    
+    static func convertYAMLToProperties(_ input: String) -> AttributedString {
+        let lines = input.components(separatedBy: .newlines)
+        var result: [String] = []
+        var keyStack: [(indent: Int, key: String)] = []
+        
+        for rawLine in lines {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
+            
+            // Blank lines and comments pass through
+            if trimmed.isEmpty {
+                result.append("")
+                continue
+            }
+            if trimmed.hasPrefix("#") {
+                result.append(trimmed)
+                continue
+            }
+            
+            // Calculate indentation level
+            let indent = rawLine.prefix(while: { $0 == " " }).count
+            
+            // Pop keys that are at the same or deeper indentation
+            while let last = keyStack.last, last.indent >= indent {
+                keyStack.removeLast()
+            }
+            
+            // Parse "key: value" or "key:"
+            guard let colonIdx = trimmed.firstIndex(of: ":") else { continue }
+            
+            let key = String(trimmed[trimmed.startIndex..<colonIdx])
+                .trimmingCharacters(in: .whitespaces)
+            let afterColon = String(trimmed[trimmed.index(after: colonIdx)...])
+                .trimmingCharacters(in: .whitespaces)
+            
+            keyStack.append((indent: indent, key: key))
+            
+            if afterColon.isEmpty || afterColon == "{}" {
+                // Parent key or empty mapping — no property line emitted
+                continue
+            }
+            
+            // Build the dotted key path from the stack
+            let fullKey = keyStack.map(\.key).joined(separator: ".")
+            let value = unquoteYAMLScalar(afterColon)
+            result.append("\(fullKey)=\(value)")
+        }
+        
+        // Trim leading/trailing blank lines
+        let output = result
+            .drop(while: { $0.isEmpty })
+            .reversed()
+            .drop(while: { $0.isEmpty })
+            .reversed()
+            .joined(separator: "\n")
+        
+        return AttributedString(output)
+    }
+    
+    /// Removes YAML quoting from a scalar value.
+    private static func unquoteYAMLScalar(_ value: String) -> String {
+        // Double-quoted
+        if value.hasPrefix("\"") && value.hasSuffix("\"") && value.count >= 2 {
+            let inner = String(value.dropFirst().dropLast())
+            return inner
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+        }
+        // Single-quoted
+        if value.hasPrefix("'") && value.hasSuffix("'") && value.count >= 2 {
+            return String(value.dropFirst().dropLast())
+                .replacingOccurrences(of: "''", with: "'")
+        }
+        return value
+    }
 }

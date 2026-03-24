@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var propertiesText = AttributedString("")
     @State private var propertiesTextStr: String = ""
     @State private var yamlText = AttributedString("")
+    @State private var yamlTextStr: String = ""
     @State private var showLineNumbers: Bool = true
     @State private var fontSize: CGFloat = 13
     
@@ -19,8 +20,14 @@ struct ContentView: View {
             ToolbarView(
                 showLineNumbers: $showLineNumbers,
                 fontSize: $fontSize,
-                onClear: { propertiesText = AttributedString(""); yamlText = AttributedString(); propertiesTextStr = "" },
-                onConvert: convert
+                onClear: {
+                    propertiesText = AttributedString("")
+                    yamlText = AttributedString("")
+                    propertiesTextStr = ""
+                    yamlTextStr = ""
+                },
+                onConvertToYAML: convertPropertiesToYAML,
+                onConvertToProperties: convertYAMLToProperties
             )
             
             Divider()
@@ -33,7 +40,7 @@ struct ContentView: View {
                     accentColor: .blue,
                     text: Binding(
                         get: { propertiesText },
-                        set: { propertiesTextStr = String($0.characters )}
+                        set: { propertiesTextStr = String($0.characters) }
                     ),
                     isEditable: true,
                     showLineNumbers: showLineNumbers,
@@ -45,41 +52,64 @@ struct ContentView: View {
                 
                 EditorPane(
                     title: "YAML",
-                    subtitle: "Converted output",
+                    subtitle: "Paste YAML or view converted output",
                     icon: "arrow.right.doc.on.clipboard",
                     accentColor: .green,
-                    text: $yamlText,
-                    isEditable: false,
+                    text: Binding(
+                        get: { yamlText },
+                        set: { yamlTextStr = String($0.characters) }
+                    ),
+                    isEditable: true,
                     showLineNumbers: showLineNumbers,
                     fontSize: fontSize,
                     placeholder: "# YAML output will appear here\n# after conversion"
                 ).id(UUID())
             }
-            .layoutPriority(1)  // ← tells VStack to give remaining space to panes, not expand them
+            .layoutPriority(1)
             
             Divider()
             
-            StatusBar(propertiesText: String(
-                propertiesText.characters),
-                      yamlText: String(yamlText.characters)
+            StatusBar(
+                propertiesText: String(propertiesText.characters),
+                yamlText: String(yamlText.characters)
             )
         }
         .background(Color(NSColor.windowBackgroundColor))
-        .onChange(of: propertiesText) { _, _ in convert() }
+        .onChange(of: propertiesText) { _, _ in convertPropertiesToYAML() }
     }
     
-    private func convert() {
+    /// Properties → YAML
+    private func convertPropertiesToYAML() {
         propertiesText = SyntaxHighlighter
             .highlightProperties(propertiesTextStr)
         
-        
         guard !propertiesTextStr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            yamlText = ""
+            yamlText = AttributedString("")
+            yamlTextStr = ""
             return
         }
         
-        yamlText = PropertiesConverter.convert(propertiesTextStr)
-        yamlText = SyntaxHighlighter.highlightYAML(String(yamlText.characters))
+        let converted = PropertiesConverter.convert(propertiesTextStr)
+        let convertedStr = String(converted.characters)
+        yamlTextStr = convertedStr
+        yamlText = SyntaxHighlighter.highlightYAML(convertedStr)
+    }
+    
+    /// YAML → Properties (triggered by button only)
+    private func convertYAMLToProperties() {
+        yamlText = SyntaxHighlighter
+            .highlightYAML(yamlTextStr)
+        
+        guard !yamlTextStr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            propertiesText = AttributedString("")
+            propertiesTextStr = ""
+            return
+        }
+        
+        let converted = PropertiesConverter.convertYAMLToProperties(yamlTextStr)
+        let convertedStr = String(converted.characters)
+        propertiesTextStr = convertedStr
+        propertiesText = SyntaxHighlighter.highlightProperties(convertedStr)
     }
 }
 

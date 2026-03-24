@@ -12,7 +12,8 @@ struct ToolbarView: View {
     @Binding var showLineNumbers: Bool
     @Binding var fontSize: CGFloat
     let onClear: () -> Void
-    let onConvert: () -> Void
+    let onConvertToYAML: () -> Void
+    let onConvertToProperties: () -> Void
     
     var body: some View {
         HStack(spacing: 12) {
@@ -67,13 +68,22 @@ struct ToolbarView: View {
             .foregroundColor(.red.opacity(0.8))
             .help("Clear both panes")
             
-            Button(action: onConvert) {
-                Label("Convert", systemImage: "bolt.fill")
+            Button(action: onConvertToYAML) {
+                Label("Props → YAML", systemImage: "arrow.right")
                     .font(.system(size: 12, weight: .semibold))
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .help("Convert .properties to YAML")
+            
+            Button(action: onConvertToProperties) {
+                Label("YAML → Props", systemImage: "arrow.left")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .controlSize(.small)
+            .help("Convert YAML to .properties")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
